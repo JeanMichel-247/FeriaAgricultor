@@ -20,7 +20,8 @@ namespace FeriaAgricultor
             var repoOrdenes = new RepositorioJson<Orden>("ordenes.json");
 
             // 2. Carga de datos iniciales
-            InicializadorDatos.Inicializar(repoUsuarios, repoProductos);
+            InicializadorDatos.Inicializar(repoUsuarios, repoProductos, repoOrdenes);
+
 
             // 3. Lanzar el login
             Application.Run(new FrmLogin(repoUsuarios, repoProductos, repoOrdenes));

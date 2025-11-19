@@ -20,16 +20,18 @@ namespace FeriaAgricultor.Views
         // Necesitamos acceso a los productos para pasárselo a la estrategia
         private readonly IRepositorio<Producto> _repoProductos;
 
-        public FrmReportes(IRepositorio<Orden> repoOrdenes, IRepositorio<Producto> repoProductos)
+        private readonly IRepositorio<Usuario> _repoUsuarios;
+
+        public FrmReportes(IRepositorio<Orden> repoOrdenes, IRepositorio<Producto> repoProductos, IRepositorio<Usuario> repoUsuarios)
         {
             InitializeComponent();
-            _repoProductos = repoProductos; // Guardamos la referencia
+            _repoProductos = repoProductos;
+            _repoUsuarios = repoUsuarios; // Guardar referencia
             _controlador = new ControladorReportes(repoOrdenes);
         }
 
         private void btnGenerar_Click(object sender, EventArgs e)
         {
-            // Selección de Estrategia
             switch (cmbTipoReporte.SelectedIndex)
             {
                 case 0: // Gastos Mensuales
@@ -40,6 +42,9 @@ namespace FeriaAgricultor.Views
                     break;
                 case 2: // Inventario
                     _controlador.EstablecerEstrategia(new EstrategiaInventario(_repoProductos));
+                    break;
+                case 3: // ---> NUEVO CASO: Historial de Órdenes
+                    _controlador.EstablecerEstrategia(new EstrategiaHistorial(_repoUsuarios));
                     break;
                 default:
                     MessageBox.Show("Seleccione un tipo de reporte.");

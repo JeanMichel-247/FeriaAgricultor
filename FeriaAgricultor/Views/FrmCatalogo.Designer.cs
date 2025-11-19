@@ -43,6 +43,8 @@
             btnPagar = new Button();
             lblProductor = new Label();
             cmbProductores = new ComboBox();
+            lblFeria = new Label();
+            cmbFeria = new ComboBox();
             ((System.ComponentModel.ISupportInitialize)dgvProductos).BeginInit();
             ((System.ComponentModel.ISupportInitialize)numCantidad).BeginInit();
             ((System.ComponentModel.ISupportInitialize)dgvCarrito).BeginInit();
@@ -61,7 +63,7 @@
             // lblBuscar
             // 
             lblBuscar.AutoSize = true;
-            lblBuscar.Location = new Point(36, 64);
+            lblBuscar.Location = new Point(36, 95);
             lblBuscar.Name = "lblBuscar";
             lblBuscar.Size = new Size(97, 15);
             lblBuscar.TabIndex = 1;
@@ -69,26 +71,26 @@
             // 
             // txtBuscar
             // 
-            txtBuscar.Location = new Point(147, 61);
+            txtBuscar.Location = new Point(147, 92);
             txtBuscar.Name = "txtBuscar";
-            txtBuscar.Size = new Size(165, 23);
+            txtBuscar.Size = new Size(251, 23);
             txtBuscar.TabIndex = 2;
             txtBuscar.TextChanged += txtBuscar_TextChanged;
             // 
             // dgvProductos
             // 
             dgvProductos.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dgvProductos.Location = new Point(36, 140);
+            dgvProductos.Location = new Point(36, 171);
             dgvProductos.MultiSelect = false;
             dgvProductos.Name = "dgvProductos";
             dgvProductos.ReadOnly = true;
             dgvProductos.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dgvProductos.Size = new Size(276, 171);
+            dgvProductos.Size = new Size(362, 171);
             dgvProductos.TabIndex = 3;
             // 
             // numCantidad
             // 
-            numCantidad.Location = new Point(203, 317);
+            numCantidad.Location = new Point(203, 348);
             numCantidad.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
             numCantidad.Name = "numCantidad";
             numCantidad.Size = new Size(68, 23);
@@ -98,7 +100,7 @@
             // lblCantidad
             // 
             lblCantidad.AutoSize = true;
-            lblCantidad.Location = new Point(142, 319);
+            lblCantidad.Location = new Point(142, 350);
             lblCantidad.Name = "lblCantidad";
             lblCantidad.Size = new Size(55, 15);
             lblCantidad.TabIndex = 5;
@@ -106,7 +108,7 @@
             // 
             // btnAgregar
             // 
-            btnAgregar.Location = new Point(118, 362);
+            btnAgregar.Location = new Point(118, 393);
             btnAgregar.Name = "btnAgregar";
             btnAgregar.Size = new Size(121, 23);
             btnAgregar.TabIndex = 6;
@@ -117,7 +119,7 @@
             // dgvCarrito
             // 
             dgvCarrito.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dgvCarrito.Location = new Point(461, 140);
+            dgvCarrito.Location = new Point(565, 140);
             dgvCarrito.Name = "dgvCarrito";
             dgvCarrito.Size = new Size(276, 171);
             dgvCarrito.TabIndex = 7;
@@ -126,7 +128,7 @@
             // 
             lblCarrito.AutoSize = true;
             lblCarrito.Font = new Font("Segoe UI", 12F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            lblCarrito.Location = new Point(576, 21);
+            lblCarrito.Location = new Point(680, 21);
             lblCarrito.Name = "lblCarrito";
             lblCarrito.Size = new Size(62, 21);
             lblCarrito.TabIndex = 8;
@@ -135,7 +137,7 @@
             // lblTotal
             // 
             lblTotal.AutoSize = true;
-            lblTotal.Location = new Point(461, 319);
+            lblTotal.Location = new Point(565, 319);
             lblTotal.Name = "lblTotal";
             lblTotal.Size = new Size(51, 15);
             lblTotal.TabIndex = 9;
@@ -144,7 +146,7 @@
             // lblDireccion
             // 
             lblDireccion.AutoSize = true;
-            lblDireccion.Location = new Point(461, 43);
+            lblDireccion.Location = new Point(565, 43);
             lblDireccion.Name = "lblDireccion";
             lblDireccion.Size = new Size(116, 15);
             lblDireccion.TabIndex = 10;
@@ -152,14 +154,14 @@
             // 
             // txtDireccion
             // 
-            txtDireccion.Location = new Point(461, 61);
+            txtDireccion.Location = new Point(565, 61);
             txtDireccion.Name = "txtDireccion";
             txtDireccion.Size = new Size(276, 23);
             txtDireccion.TabIndex = 11;
             // 
             // btnPagar
             // 
-            btnPagar.Location = new Point(563, 362);
+            btnPagar.Location = new Point(667, 362);
             btnPagar.Name = "btnPagar";
             btnPagar.Size = new Size(75, 23);
             btnPagar.TabIndex = 12;
@@ -170,7 +172,7 @@
             // lblProductor
             // 
             lblProductor.AutoSize = true;
-            lblProductor.Location = new Point(36, 101);
+            lblProductor.Location = new Point(36, 132);
             lblProductor.Name = "lblProductor";
             lblProductor.Size = new Size(120, 15);
             lblProductor.TabIndex = 13;
@@ -180,17 +182,38 @@
             // 
             cmbProductores.DropDownStyle = ComboBoxStyle.DropDownList;
             cmbProductores.FormattingEnabled = true;
-            cmbProductores.Location = new Point(162, 98);
+            cmbProductores.Location = new Point(162, 129);
             cmbProductores.Name = "cmbProductores";
-            cmbProductores.Size = new Size(150, 23);
+            cmbProductores.Size = new Size(236, 23);
             cmbProductores.TabIndex = 14;
             cmbProductores.SelectedIndexChanged += cmbProductores_SelectedIndexChanged;
+            // 
+            // lblFeria
+            // 
+            lblFeria.AutoSize = true;
+            lblFeria.Location = new Point(36, 64);
+            lblFeria.Name = "lblFeria";
+            lblFeria.Size = new Size(97, 15);
+            lblFeria.TabIndex = 15;
+            lblFeria.Text = "Seleccione Feria: ";
+            // 
+            // cmbFeria
+            // 
+            cmbFeria.DropDownStyle = ComboBoxStyle.DropDownList;
+            cmbFeria.FormattingEnabled = true;
+            cmbFeria.Location = new Point(147, 56);
+            cmbFeria.Name = "cmbFeria";
+            cmbFeria.Size = new Size(251, 23);
+            cmbFeria.TabIndex = 16;
+            cmbFeria.SelectedIndexChanged += cmbFeria_SelectedIndexChanged;
             // 
             // FrmCatalogo
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(800, 450);
+            ClientSize = new Size(919, 450);
+            Controls.Add(cmbFeria);
+            Controls.Add(lblFeria);
             Controls.Add(cmbProductores);
             Controls.Add(lblProductor);
             Controls.Add(btnPagar);
@@ -233,5 +256,7 @@
         private Button btnPagar;
         private Label lblProductor;
         private ComboBox cmbProductores;
+        private Label lblFeria;
+        private ComboBox cmbFeria;
     }
 }

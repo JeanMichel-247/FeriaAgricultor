@@ -93,4 +93,44 @@ namespace FeriaAgricultor.Controllers
             return reporte;
         }
     }
+    // ---------------- ESTRATEGIA 4: Historial Completo de Órdenes ----------------
+    public class EstrategiaHistorial : IEstrategiaReporte
+    {
+        private readonly IRepositorio<Usuario> _repoUsuarios;
+
+        // Inyectamos el repo de usuarios para poder buscar los nombres de los clientes
+        public EstrategiaHistorial(IRepositorio<Usuario> repoUsuarios)
+        {
+            _repoUsuarios = repoUsuarios;
+        }
+
+        public List<FilaReporte> GenerarReporte(List<Orden> ordenes, int idUsuario)
+        {
+            var usuarios = _repoUsuarios.ObtenerTodos();
+            IEnumerable<Orden> ordenesFiltradas = ordenes;
+
+            // Lógica de negocio:
+            // - Si soy Admin, veo TODAS las órdenes del sistema.
+            // - Si soy Cliente, veo solo mis órdenes.
+            if (!SesionUsuario.UsuarioActual.EsProductor)
+            {
+                ordenesFiltradas = ordenes.Where(o => o.IdUsuario == idUsuario);
+            }
+
+            // Cruzamos Ordenes con Usuarios para obtener el nombre del cliente
+            var reporte = from o in ordenesFiltradas
+                          join u in usuarios on o.IdUsuario equals u.Id
+                          orderby o.Fecha descending // Las más recientes primero
+                          select new FilaReporte
+                          {
+                              // En la etiqueta ponemos Fecha e ID
+                              Etiqueta = $"{o.Fecha.ToShortDateString()} - Orden #{o.Id}",
+
+                              // En el valor ponemos el Monto y el Nombre del Cliente
+                              Valor = $"₡{o.Total:N2} - Cliente: {u.NombreCompleto}"
+                          };
+
+            return reporte.ToList();
+        }
+    }
 }

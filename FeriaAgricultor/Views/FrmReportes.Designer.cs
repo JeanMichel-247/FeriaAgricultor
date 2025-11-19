@@ -38,7 +38,7 @@
             // 
             cmbTipoReporte.DropDownStyle = ComboBoxStyle.DropDownList;
             cmbTipoReporte.FormattingEnabled = true;
-            cmbTipoReporte.Items.AddRange(new object[] { "Gastos Mensuales", "Productos Favoritos", "Inventario Restante" });
+            cmbTipoReporte.Items.AddRange(new object[] { "Gastos Mensuales", "Productos Favoritos", "Inventario Restante", "Historial de Órdenes" });
             cmbTipoReporte.Location = new Point(156, 55);
             cmbTipoReporte.Name = "cmbTipoReporte";
             cmbTipoReporte.Size = new Size(121, 23);

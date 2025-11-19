@@ -56,7 +56,7 @@ namespace FeriaAgricultor.Views
         private void btnReportes_Click(object sender, EventArgs e)
         {
             // Solo necesitamos el repositorio de ordenes para los reportes
-            var frm = new FrmReportes(_repoOrdenes, _repoProductos);
+            var frm = new FrmReportes(_repoOrdenes, _repoProductos, _repoUsuarios);
             frm.ShowDialog();
         }
     }

@@ -35,7 +35,13 @@ namespace FeriaAgricultor.Views
 
         private void FrmCatalogo_Load(object sender, EventArgs e)
         {
-            CargarProductores(); 
+            // 1. Primero cargamos las Ferias (Extraemos los nombres únicos)
+            CargarFerias();
+
+            // 2. Cargamos productores (inicialmente todos porque la feria es "Todas")
+            CargarProductores();
+
+            // 3. Cargamos productos
             CargarProductos();
 
             if (SesionUsuario.UsuarioActual.DireccionesGuardadas.Count > 0)
@@ -44,57 +50,108 @@ namespace FeriaAgricultor.Views
             }
         }
 
-        // Método para llenar el combobox de productores
-        private void CargarProductores()
+        private void CargarFerias()
         {
-            // 1. Obtener solo los usuarios que son productores
+            var productores = _repoUsuarios.ObtenerTodos().FindAll(u => u.EsProductor);
+
+            // Magia LINQ:
+            // 1. Tomamos el nombre (ej: "Productor 1 - Feria Zapote")
+            // 2. Cortamos por el guion '-'
+            // 3. Tomamos la segunda parte (la feria)
+            // 4. Distinct() elimina duplicados
+            var listaFerias = productores
+                .Select(u => u.NombreCompleto.Contains("-") ? u.NombreCompleto.Split('-')[1].Trim() : "Sin Feria")
+                .Distinct()
+                .ToList();
+
+            // Agregamos opción por defecto
+            listaFerias.Insert(0, "--- Todas las Ferias ---");
+
+            cmbFeria.DataSource = listaFerias;
+        }
+
+        // Método para llenar el combobox de productores
+        private void CargarProductores(string filtroFeria = "")
+        {
+            // 1. Obtener todos los productores
             var listaProductores = _repoUsuarios.ObtenerTodos().FindAll(u => u.EsProductor);
 
-            // 2. Crear una opción  para ver todos
-            var opcionTodos = new Usuario { Id = 0, NombreCompleto = "--- Ver Todos ---" };
+            // 2. Si hay una feria seleccionada (que no sea "Todas"), filtramos
+            if (!string.IsNullOrEmpty(filtroFeria) && filtroFeria != "--- Todas las Ferias ---")
+            {
+                // Buscamos los que tengan ese nombre de feria en su nombre completo
+                listaProductores = listaProductores.FindAll(u => u.NombreCompleto.Contains(filtroFeria));
+            }
+
+            // 3. Crear opción "Ver Todos" (para los productores de esa feria específica)
+            var opcionTodos = new Usuario { Id = 0, NombreCompleto = "--- Ver Todos los Productores ---" };
             listaProductores.Insert(0, opcionTodos);
 
-            // 3. Asignar al ComboBox
+            // 4. Asignar al ComboBox
+            // Importante: Desvinculamos antes para evitar errores de refresco
+            cmbProductores.DataSource = null;
             cmbProductores.DataSource = listaProductores;
-            cmbProductores.DisplayMember = "NombreCompleto"; // Lo que se ve
-            cmbProductores.ValueMember = "Id"; // El valor oculto
+            cmbProductores.DisplayMember = "NombreCompleto";
+            cmbProductores.ValueMember = "Id";
+        }
+
+        private void cmbFeria_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            string feriaSeleccionada = cmbFeria.SelectedValue?.ToString();
+
+            // Recargar el segundo combo basado en la elección del primero
+            CargarProductores(feriaSeleccionada);
+
+            // Recargar la tabla general
+            CargarProductos(txtBuscar.Text);
         }
 
         // Método para cargar productos con filtros
         private void CargarProductos(string busqueda = "")
         {
-            var lista = _repoProductos.ObtenerTodos();
+            var listaProductos = _repoProductos.ObtenerTodos();
+            var listaUsuarios = _repoUsuarios.ObtenerTodos();
 
-            // 1. Filtro por nombre
+            // 1. Aplicar Filtro por Texto (Nombre del producto)
             if (!string.IsNullOrEmpty(busqueda))
             {
-                lista = lista.FindAll(p => p.Nombre.ToLower().Contains(busqueda.ToLower()));
+                listaProductos = listaProductos.FindAll(p => p.Nombre.ToLower().Contains(busqueda.ToLower()));
             }
 
-            // 2. Filtro por productor 
-            // Verificamos si el combo ya tiene algo seleccionado y si no es "Ver Todos"
+            // 2. Aplicar Filtro por Productor (ComboBox)
             if (cmbProductores.SelectedValue != null)
             {
-                // Aseguramos que sea int
                 if (int.TryParse(cmbProductores.SelectedValue.ToString(), out int idProductor))
                 {
-                    if (idProductor > 0) // Si no es la opción 0 
+                    if (idProductor > 0) // Si no es "Ver Todos"
                     {
-                        lista = lista.FindAll(p => p.IdProductor == idProductor);
+                        listaProductos = listaProductos.FindAll(p => p.IdProductor == idProductor);
                     }
                 }
             }
 
-            dgvProductos.DataSource = null;
-            dgvProductos.DataSource = lista;
+            // 3. EL CRUCE MÁGICO (JOIN): Unimos Productos con Usuarios para sacar el nombre
+            var listadoVisual = from p in listaProductos
+                                join u in listaUsuarios on p.IdProductor equals u.Id
+                                select new
+                                {
+                                    Id = p.Id,                  // Necesario para la lógica
+                                    Producto = p.Nombre,
+                                    Precio = p.Precio,
+                                    Unidad = p.Unidad,
+                                    Stock = p.CantidadStock,
+                                    Productor = u.NombreCompleto // <--- ¡AQUÍ ESTÁ LO QUE FALTABA!
+                                };
 
-            // Ocultar columnas técnicas
+            // 4. Asignar al Grid
+            dgvProductos.DataSource = null;
+            dgvProductos.DataSource = listadoVisual.ToList();
+
+            // 5. Ocultar columnas que no interesan al usuario
             if (dgvProductos.Columns["Id"] != null) dgvProductos.Columns["Id"].Visible = false;
-            if (dgvProductos.Columns["IdProductor"] != null) dgvProductos.Columns["IdProductor"].Visible = false;
-            if (dgvProductos.Columns["DescripcionVisual"] != null) dgvProductos.Columns["DescripcionVisual"].Visible = false;
         }
 
-        
+
         private void cmbProductores_SelectedIndexChanged(object sender, EventArgs e)
         {
             // Al cambiar el combo, recargamos la lista respetando lo que haya escrito en el buscador
@@ -115,14 +172,15 @@ namespace FeriaAgricultor.Views
                 return;
             }
 
-            // Obtener el objeto seleccionado
-            var productoSeleccionado = (Producto)dgvProductos.SelectedRows[0].DataBoundItem;
+            // CAMBIO AQUÍ: Ya no podemos hacer cast a (Producto) directo.
+            // Leemos el ID desde la celda oculta "Id".
+            int idProductoSeleccionado = (int)dgvProductos.SelectedRows[0].Cells["Id"].Value;
             int cantidad = (int)numCantidad.Value;
 
             try
             {
-                // Delegar al controlador
-                _controladorCarrito.AgregarAlCarrito(productoSeleccionado.Id, cantidad);
+                // El controlador buscará el producto real usando el ID
+                _controladorCarrito.AgregarAlCarrito(idProductoSeleccionado, cantidad);
 
                 RefrescarCarrito();
                 MessageBox.Show("Producto agregado.");
