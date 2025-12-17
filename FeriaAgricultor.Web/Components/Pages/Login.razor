@@ -1,0 +1,69 @@
+﻿@page "/"
+@* *@
+@rendermode InteractiveServer
+
+@using FeriaAgricultor.Core.Models
+@using FeriaAgricultor.Core.Data
+@using FeriaAgricultor.Core.Services
+@inject IRepositorio<Usuario> RepoUsuarios
+@inject ServicioSesion Sesion
+@inject NavigationManager NavManager
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h3 class="text-center">Feria del Agricultor - Acceso</h3>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(mensajeError))
+                    {
+                        <div class="alert alert-danger">@mensajeError</div>
+                    }
+
+                    <div class="mb-3">
+                        <label>Correo Electrónico</label>
+                        <input @bind="correo" class="form-control" placeholder="ejemplo@prueba.com" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Contraseña</label>
+                        <input @bind="clave" type="password" class="form-control" placeholder="******" />
+                    </div>
+
+                    <button class="btn btn-success w-100" @onclick="ValidarLogin">Ingresar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    // Variables para capturar lo que escribe el usuario
+    private string correo = "";
+    private string clave = "";
+    private string mensajeError = "";
+
+    private void ValidarLogin()
+    {
+        // 1. Buscamos el usuario en la BD 
+        var usuario = RepoUsuarios.ObtenerTodos()
+                                  .FirstOrDefault(u => u.Correo == correo && u.Clave == clave);
+
+        if (usuario != null)
+        {
+            // 2. Guardamos al usuario en el servicio de sesión 
+            Sesion.IniciarSesion(usuario);
+
+            // 3. Redirigimos según el rol
+            // Si es Admin/Productor -> Dashboard o Inventario
+            // Si es Cliente -> Catálogo
+            NavManager.NavigateTo("/catalogo");
+        }
+        else
+        {
+            mensajeError = "Correo o contraseña incorrectos.";
+        }
+    }
+}

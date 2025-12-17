@@ -1,0 +1,221 @@
+﻿@page "/admin-reportes"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+@using FeriaAgricultor.Core.Models
+@using FeriaAgricultor.Core.Data
+@using FeriaAgricultor.Core.Services
+@using System.Text
+
+@inject IRepositorio<Orden> RepoOrdenes
+@inject IRepositorio<Usuario> RepoUsuarios
+@inject IRepositorio<Producto> RepoProductos
+@inject ServicioSesion Sesion
+@inject NavigationManager NavManager
+@inject IJSRuntime JS
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Reportes y Estadísticas</h2>
+        <button class="btn btn-outline-secondary" @onclick="Volver">Volver</button>
+    </div>
+
+    @if (esAdmin)
+    {
+        <div class="card shadow mb-4">
+            <div class="card-body bg-light">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label>Fecha Inicio</label>
+                        <input type="date" class="form-control" @bind="fechaInicio" />
+                    </div>
+                    <div class="col-md-3">
+                        <label>Fecha Fin</label>
+                        <input type="date" class="form-control" @bind="fechaFin" />
+                    </div>
+                    <div class="col-md-3">
+                        <label>Tipo Reporte</label>
+                        <select class="form-select" @bind="tipoReporte">
+                            <option value="Feria">Ventas por Feria</option>
+                            <option value="Productor">Ventas por Productor</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-primary w-100" @onclick="GenerarReporte">
+                            Generar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (datosReporte.Any())
+        {
+            <div class="row mb-3">
+                <div class="col-12 text-end">
+                    <button class="btn btn-success" @onclick="DescargarCSV">Descargar CSV</button>
+                </div>
+            </div>
+
+            <div class="card shadow">
+                <div class="card-header bg-dark text-white d-flex justify-content-between">
+                    <span>Resultados: @tipoReporte</span>
+                    <span>Total General: ₡@datosReporte.Sum(x => x.Total).ToString("N2")</span>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>Nombre (Feria / Productor)</th>
+                                <th class="text-center">Cant. Órdenes</th>
+                                <th class="text-end">Total Vendido</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in datosReporte.OrderByDescending(x => x.Total))
+                            {
+                                <tr>
+                                    <td>@item.Etiqueta</td>
+                                    <td class="text-center">@item.Cantidad</td>
+                                    <td class="text-end fw-bold">₡@item.Total.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+        else if (busquedaRealizada)
+        {
+            <div class="alert alert-warning">No se encontraron datos en este rango de fechas.</div>
+        }
+    }
+    else
+    {
+        <div class="alert alert-danger">Acceso Restringido</div>
+    }
+</div>
+
+@code {
+    private bool esAdmin = false;
+    private DateTime fechaInicio = DateTime.Today.AddDays(-30); // Último mes por defecto
+    private DateTime fechaFin = DateTime.Today;
+    private string tipoReporte = "Feria";
+    private bool busquedaRealizada = false;
+
+    // Clase interna para el reporte
+    class FilaReporte
+    {
+        public string Etiqueta { get; set; }
+        public decimal Total { get; set; }
+        public int Cantidad { get; set; }
+    }
+
+    private List<FilaReporte> datosReporte = new();
+
+    protected override void OnInitialized()
+    {
+        if (Sesion.EstaLogueado && Sesion.UsuarioActual.Correo == "admin@feria.com")
+        {
+            esAdmin = true;
+        }
+        else
+        {
+            NavManager.NavigateTo("/");
+        }
+    }
+
+    private void GenerarReporte()
+    {
+        busquedaRealizada = true;
+        datosReporte.Clear();
+
+        // 1. Obtener todas las órdenes en el rango
+        var ordenes = RepoOrdenes.ObtenerTodos()
+            .Where(o => o.Fecha.Date >= fechaInicio && o.Fecha.Date <= fechaFin)
+            .ToList();
+
+        var productores = RepoUsuarios.ObtenerTodos();
+        var productos = RepoProductos.ObtenerTodos();
+
+        // Diccionarios temporales para acumular
+        // Clave: Nombre (Feria o Productor), Valor: (TotalDinero, CantidadVentas)
+        var acumulador = new Dictionary<string, (decimal Total, int Cant)>();
+
+        foreach (var orden in ordenes)
+        {
+            foreach (var detalle in orden.Detalles)
+            {
+                // A. Identificar quién vendió este producto
+                // Buscamos el producto original para sacar el IdProductor
+                var productoOriginal = productos.FirstOrDefault(p => p.Id == detalle.IdProducto);
+
+                if (productoOriginal != null)
+                {
+                    var productor = productores.FirstOrDefault(u => u.Id == productoOriginal.IdProductor);
+                    if (productor != null)
+                    {
+                        string claveAgrupacion = "";
+
+                        if (tipoReporte == "Productor")
+                        {
+                            claveAgrupacion = productor.NombreCompleto;
+                        }
+                        else // Por Feria
+                        {
+                            // Parseamos el nombre "Productor - Feria X"
+                            if (productor.NombreCompleto.Contains("-"))
+                                claveAgrupacion = productor.NombreCompleto.Split('-')[1].Trim();
+                            else
+                                claveAgrupacion = "Sin Feria Asignada";
+                        }
+
+                        // B. Sumar al acumulador
+                        decimal montoLinea = detalle.Cantidad * detalle.PrecioUnitario;
+
+                        if (!acumulador.ContainsKey(claveAgrupacion))
+                            acumulador[claveAgrupacion] = (0, 0);
+
+                        var actual = acumulador[claveAgrupacion];
+                        // Sumamos monto y contamos 1 venta (o podrías contar por orden única, pero por producto es más preciso para volumen)
+                        acumulador[claveAgrupacion] = (actual.Total + montoLinea, actual.Cant + 1);
+                    }
+                }
+            }
+        }
+
+        // Convertir diccionario a lista visual
+        foreach (var kvp in acumulador)
+        {
+            datosReporte.Add(new FilaReporte
+            {
+                Etiqueta = kvp.Key,
+                Total = kvp.Value.Total,
+                Cantidad = kvp.Value.Cant
+            });
+        }
+    }
+
+    private async Task DescargarCSV()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("Reporte de Ventas");
+        sb.AppendLine($"Desde: {fechaInicio.ToShortDateString()} - Hasta: {fechaFin.ToShortDateString()}");
+        sb.AppendLine($"Tipo: {tipoReporte}");
+        sb.AppendLine("--------------------------------");
+        sb.AppendLine("Nombre,Cantidad Ventas,Total");
+
+        foreach (var item in datosReporte.OrderByDescending(x => x.Total))
+        {
+            sb.AppendLine($"{item.Etiqueta},{item.Cantidad},{item.Total}");
+        }
+
+        // Convertir a bytes para descarga
+        var bytes = Encoding.UTF8.GetBytes(sb.ToString());
+        var base64 = Convert.ToBase64String(bytes);
+
+        // Llamada a JS
+        await JS.InvokeVoidAsync("descargarArchivo", $"Reporte_{tipoReporte}_{DateTime.Now.Ticks}.csv", base64);
+    }
+
+    private void Volver() => NavManager.NavigateTo("/catalogo");
+}

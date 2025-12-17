@@ -1,0 +1,317 @@
+﻿@page "/catalogo"
+@rendermode InteractiveServer
+
+@using FeriaAgricultor.Core.Models
+@using FeriaAgricultor.Core.Data
+@using FeriaAgricultor.Core.Controllers
+@using FeriaAgricultor.Core.Services
+
+@inject IRepositorio<Usuario> RepoUsuarios
+@inject IRepositorio<Producto> RepoProductos
+@inject ControladorCarrito Carrito
+@inject ServicioSesion Sesion
+@inject NavigationManager NavManager
+
+<div class="container-fluid mt-4">
+
+    @if (!Sesion.EstaLogueado)
+    {
+        <div class="alert alert-warning">
+            Debes iniciar sesión para ver el catálogo. <a href="/">Ir al Login</a>
+        </div>
+    }
+    else
+    {
+        <div class="row mb-3 align-items-end">
+            <div class="col-md-12 text-end">
+                <span class="badge bg-primary p-2">Usuario: @Sesion.UsuarioActual.NombreCompleto</span>
+                
+                @if (Sesion.UsuarioActual.Correo == "admin@feria.com")
+                {
+                    <button class="btn btn-sm btn-dark me-2" @onclick="IrAdmin">Usuarios</button>
+                    <button class="btn btn-sm btn-dark me-2" @onclick="IrInventario">Inventario</button>
+                    <button class="btn btn-sm btn-dark me-2" @onclick="IrReportes">Reportes</button>
+                }
+                
+                @if (Sesion.UsuarioActual.Correo == "admin@feria.com")
+                {
+                    <button class="btn btn-sm btn-dark me-2" @onclick="IrAdmin">Admin Usuarios</button>
+                }
+                <button class="btn btn-sm btn-outline-danger ms-2" @onclick="CerrarSesion">Salir</button>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header bg-light">
+                        <h5 class="m-0">Buscar Productos</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <label>Feria:</label>
+                                <select class="form-select" @onchange="FiltrarPorFeria">
+                                    <option value="">--- Todas las Ferias ---</option>
+                                    @foreach (var feria in listaFerias)
+                                    {
+                                        <option value="@feria">@feria</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label>Productor:</label>
+                                <select class="form-select" @bind="idProductorFiltro">
+                                    <option value="0">--- Todos ---</option>
+                                    @foreach (var prod in listaProductoresFiltrada)
+                                    {
+                                        <option value="@prod.Id">@prod.NombreCompleto</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label>Producto:</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" placeholder="Ej: Papas..."
+                                           @bind="textoBusqueda" @bind:event="oninput" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive shadow-sm border rounded">
+                    <table class="table table-hover align-middle mb-0 bg-white">
+                        <thead class="table-success">
+                            <tr>
+                                <th>Producto</th>
+                                <th>Precio</th>
+                                <th>Productor</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in ObtenerProductosFiltrados())
+                            {
+                                <tr>
+                                    <td>
+                                        <span class="fw-bold">@item.Producto.Nombre</span><br />
+                                        <small class="text-muted">Stock: @item.Producto.CantidadStock @item.Producto.Unidad</small>
+                                    </td>
+                                    <td>₡@item.Producto.Precio</td>
+                                    <td><small>@item.NombreProductor</small></td>
+                                    <td>
+                                        <div class="input-group input-group-sm" style="width: 120px;">
+                                            <input type="number" class="form-control" min="1" max="10" @bind="cantidades[item.Producto.Id]" />
+                                            <button class="btn btn-success" @onclick="() => Agregar(item.Producto.Id)">
+                                                +
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                            @if (!ObtenerProductosFiltrados().Any())
+                            {
+                                <tr><td colspan="4" class="text-center py-3">No hay productos que coincidan.</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                @if (!string.IsNullOrEmpty(mensajeError))
+                {
+                    <div class="alert alert-danger mb-2">
+                        @mensajeError
+                    </div>
+                }
+
+                <div class="card shadow border-success position-sticky" style="top: 20px;">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="m-0">Tu Carrito</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <ul class="list-group list-group-flush">
+                            @foreach (var linea in Carrito.ObtenerCarrito())
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>@linea.NombreProducto</strong>
+                                        <br /><small class="text-muted">@linea.Cantidad x ₡@linea.PrecioUnitario</small>
+                                    </div>
+                                    <span class="fw-bold">₡@(linea.Cantidad* linea.PrecioUnitario)</span>
+                                </li>
+                            }
+                            @if (!Carrito.ObtenerCarrito().Any())
+                            {
+                                <li class="list-group-item text-center text-muted py-4">
+                                    El carrito está vacío ☹️
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                    <div class="card-footer bg-light">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="fw-bold">Total:</span>
+                            <span class="fs-5 fw-bold text-success">₡@Carrito.CalcularTotal().ToString("N2")</span>
+                        </div>
+
+                        <div class="mb-2">
+                            <input type="text" class="form-control form-control-sm" placeholder="Dirección de entrega..." @bind="direccionEntrega" />
+                        </div>
+
+                        <button class="btn btn-success w-100" @onclick="FinalizarCompra" disabled="@(!Carrito.ObtenerCarrito().Any())">
+                            Pagar y Finalizar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+
+    private string mensajeError = "";
+
+    // Variables de Estado
+    private List<string> listaFerias = new();
+    private List<Usuario> listaProductores = new();
+    private List<Usuario> listaProductoresFiltrada = new();
+    private List<Producto> listaProductos = new();
+
+    // Filtros
+    private string feriaSeleccionada = "";
+    private int idProductorFiltro = 0;
+    private string textoBusqueda = "";
+
+    // Auxiliar para cantidades
+    private Dictionary<int, int> cantidades = new();
+    private string direccionEntrega = "";
+
+
+    public class ProductoVisual
+    {
+        public Producto Producto { get; set; }
+        public string NombreProductor { get; set; }
+    }
+
+    protected override void OnInitialized()
+    {
+        if (!Sesion.EstaLogueado) return;
+
+        listaProductores = RepoUsuarios.ObtenerTodos().Where(u => u.EsProductor).ToList();
+        listaProductos = RepoProductos.ObtenerTodos();
+
+        listaFerias = listaProductores
+            .Select(u => u.NombreCompleto.Contains("-") ? u.NombreCompleto.Split('-')[1].Trim() : "Sin Feria")
+            .Distinct()
+            .ToList();
+
+        listaProductoresFiltrada = new List<Usuario>(listaProductores);
+
+        foreach (var p in listaProductos)
+        {
+            if (!cantidades.ContainsKey(p.Id)) cantidades[p.Id] = 1;
+        }
+
+        if (Sesion.UsuarioActual.DireccionesGuardadas.Any())
+            direccionEntrega = Sesion.UsuarioActual.DireccionesGuardadas[0];
+    }
+
+    private void FiltrarPorFeria(ChangeEventArgs e)
+    {
+        feriaSeleccionada = e.Value?.ToString() ?? "";
+        idProductorFiltro = 0;
+
+        if (string.IsNullOrEmpty(feriaSeleccionada))
+        {
+            listaProductoresFiltrada = new List<Usuario>(listaProductores);
+        }
+        else
+        {
+            listaProductoresFiltrada = listaProductores
+                .Where(u => u.NombreCompleto.Contains(feriaSeleccionada))
+                .ToList();
+        }
+    }
+
+    
+    private IEnumerable<ProductoVisual> ObtenerProductosFiltrados()
+    {
+        var query = listaProductos.AsEnumerable();
+
+        if (!string.IsNullOrEmpty(textoBusqueda))
+            query = query.Where(p => p.Nombre.ToLower().Contains(textoBusqueda.ToLower()));
+
+        if (idProductorFiltro > 0)
+            query = query.Where(p => p.IdProductor == idProductorFiltro);
+
+        if (!string.IsNullOrEmpty(feriaSeleccionada) && idProductorFiltro == 0)
+        {
+            var idsEnFeria = listaProductoresFiltrada.Select(u => u.Id).ToList();
+            query = query.Where(p => idsEnFeria.Contains(p.IdProductor));
+        }
+
+       
+        return from p in query
+               join u in listaProductores on p.IdProductor equals u.Id
+               select new ProductoVisual { Producto = p, NombreProductor = u.NombreCompleto };
+    }
+
+    private void Agregar(int idProducto)
+    {
+        try
+        {
+            int cant = cantidades.ContainsKey(idProducto) ? cantidades[idProducto] : 1;
+            Carrito.AgregarAlCarrito(idProducto, cant);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    private void FinalizarCompra()
+    {
+        if (string.IsNullOrWhiteSpace(direccionEntrega))
+        {
+            mensajeError = " ¡Falta la dirección! Por favor escribe dónde entregar el pedido.";
+            return;
+        }
+
+        try
+        {
+            mensajeError = "";
+            var orden = Carrito.FinalizarCompra(direccionEntrega);
+
+            listaProductos = RepoProductos.ObtenerTodos();
+            direccionEntrega = "";
+
+            NavManager.NavigateTo($"/factura/{orden.Id}");
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $" Error al procesar: {ex.Message}";
+        }
+    }
+
+    private void IrAdmin()
+    {
+        NavManager.NavigateTo("/admin-usuarios");
+    }
+
+    private void IrInventario()
+    {
+        NavManager.NavigateTo("/admin-inventario");
+    }
+
+    private void IrReportes() => NavManager.NavigateTo("/admin-reportes");
+
+    private void CerrarSesion()
+    {
+        Sesion.CerrarSesion();
+        NavManager.NavigateTo("/");
+    }
+}

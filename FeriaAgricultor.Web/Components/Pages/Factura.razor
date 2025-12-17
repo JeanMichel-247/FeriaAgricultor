@@ -1,0 +1,98 @@
+﻿@page "/factura/{IdOrden:int}"
+@rendermode InteractiveServer
+
+@using FeriaAgricultor.Core.Models
+@using FeriaAgricultor.Core.Data
+@inject IRepositorio<Orden> RepoOrdenes
+@inject NavigationManager NavManager
+
+<div class="container mt-5">
+    <div class="card shadow-lg border-success">
+        <div class="card-header bg-success text-white text-center">
+            <h2>¡Compra Exitosa!</h2>
+            <p>Gracias por apoyar a nuestros productores locales</p>
+        </div>
+        <div class="card-body">
+            @if (orden == null)
+            {
+                <div class="alert alert-danger">No se encontró la orden solicitada.</div>
+            }
+            else
+            {
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h5>Datos de la Orden:</h5>
+                        <ul class="list-unstyled">
+                            <li><strong>Número de Orden:</strong> #@orden.Id</li>
+                            <li><strong>Fecha:</strong> @orden.Fecha.ToShortDateString()</li>
+                            <li><strong>Cliente:</strong> @nombreCliente</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <h5>Dirección de Entrega:</h5>
+                        <p class="text-muted">@orden.DireccionEntrega</p>
+                    </div>
+                </div>
+
+                <table class="table table-striped">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Producto</th>
+                            <th class="text-center">Cant.</th>
+                            <th class="text-end">Precio Unit.</th>
+                            <th class="text-end">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var det in orden.Detalles)
+                        {
+                            <tr>
+                                <td>@det.NombreProducto</td>
+                                <td class="text-center">@det.Cantidad</td>
+                                <td class="text-end">₡@det.PrecioUnitario</td>
+                                <td class="text-end">₡@(det.Cantidad* det.PrecioUnitario)</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot class="table-success fw-bold">
+                        <tr>
+                            <td colspan="3" class="text-end">TOTAL PAGADO:</td>
+                            <td class="text-end fs-5">₡@orden.Total.ToString("N2")</td>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <div class="text-center mt-4">
+                    <button class="btn btn-primary" @onclick="VolverAlCatalogo">Seguir Comprando</button>
+                    <button class="btn btn-outline-secondary" onclick="window.print()">Imprimir Comprobante</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int IdOrden { get; set; }
+    private Orden? orden;
+    private string nombreCliente = "";
+
+    // Inyectamos el Repo de Usuarios solo para buscar el nombre en este método
+    [Inject] IRepositorio<Usuario> RepoUsuarios { get; set; }
+
+    protected override void OnInitialized()
+    {
+        // Buscamos la orden por el ID que viene en la URL
+        orden = RepoOrdenes.ObtenerPorId(IdOrden);
+
+        if (orden != null)
+        {
+            var cliente = RepoUsuarios.ObtenerPorId(orden.IdUsuario);
+            nombreCliente = cliente != null ? cliente.NombreCompleto : "Cliente";
+        }
+    }
+
+    private void VolverAlCatalogo()
+    {
+        NavManager.NavigateTo("/catalogo");
+    }
+}

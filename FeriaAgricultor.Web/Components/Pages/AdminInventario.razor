@@ -1,0 +1,134 @@
+﻿@page "/admin-inventario"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+@using FeriaAgricultor.Core.Models
+@using FeriaAgricultor.Core.Data
+@using FeriaAgricultor.Core.Services
+
+@inject IRepositorio<Usuario> RepoUsuarios
+@inject IRepositorio<Producto> RepoProductos
+@inject ServicioSesion Sesion
+@inject NavigationManager NavManager
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Gestión de Inventarios (Admin)</h2>
+        <button class="btn btn-outline-secondary" @onclick="Volver">Volver al Catálogo</button>
+    </div>
+
+    @if (!esAdmin)
+    {
+        <div class="alert alert-danger">Acceso Denegado.</div>
+    }
+    else
+    {
+        <div class="card shadow mb-4">
+            <div class="card-body">
+                <label class="form-label fw-bold">Seleccione un Productor para editar su stock:</label>
+                <select class="form-select" @onchange="CargarProductosDelProductor">
+                    <option value="0">--- Seleccione Productor ---</option>
+                    @foreach (var prod in listaProductores)
+                    {
+                        <option value="@prod.Id">@prod.NombreCompleto</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        @if (productosDelProductor.Any())
+        {
+            <div class="table-responsive shadow-sm border rounded">
+                <table class="table table-hover align-middle mb-0 bg-white">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Producto</th>
+                            <th>Unidad</th>
+                            <th style="width: 150px;">Precio (₡)</th>
+                            <th style="width: 150px;">Stock Actual</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in productosDelProductor)
+                        {
+                            <tr>
+                                <td>@p.Nombre</td>
+                                <td>@p.Unidad</td>
+                                <td>
+                                    @* Input editable para PRECIO *@
+                                    <input type="number" class="form-control" @bind="p.Precio" />
+                                </td>
+                                <td>
+                                    @* Input editable para STOCK *@
+                                    <input type="number" class="form-control" @bind="p.CantidadStock" />
+                                </td>
+                                <td>
+                                    <button class="btn btn-success btn-sm" @onclick="() => GuardarCambios(p)">
+                                        Guardar
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else if (idProductorSeleccionado > 0)
+        {
+            <div class="alert alert-warning">Este productor no tiene productos registrados.</div>
+        }
+    }
+</div>
+
+@code {
+    private bool esAdmin = false;
+    private List<Usuario> listaProductores = new();
+    private List<Producto> productosDelProductor = new();
+    private int idProductorSeleccionado = 0;
+
+    protected override void OnInitialized()
+    {
+        if (!Sesion.EstaLogueado || Sesion.UsuarioActual.Correo != "admin@feria.com")
+        {
+            NavManager.NavigateTo("/");
+            return;
+        }
+
+        esAdmin = true;
+        // Cargamos solo los productores
+        listaProductores = RepoUsuarios.ObtenerTodos().Where(u => u.EsProductor).ToList();
+    }
+
+    private void CargarProductosDelProductor(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int id))
+        {
+            idProductorSeleccionado = id;
+            if (id > 0)
+            {
+                // Buscamos los productos de ese ID
+                productosDelProductor = RepoProductos.ObtenerTodos()
+                                                     .Where(p => p.IdProductor == id)
+                                                     .ToList();
+            }
+            else
+            {
+                productosDelProductor.Clear();
+            }
+        }
+    }
+
+    private void GuardarCambios(Producto productoEditado)
+    {
+        // Usamos el método Actualizar que creamos en el paso anterior
+        RepoProductos.Actualizar(productoEditado);
+
+        
+        Console.WriteLine($"Producto {productoEditado.Nombre} actualizado a Stock: {productoEditado.CantidadStock}");
+    }
+
+    private void Volver()
+    {
+        NavManager.NavigateTo("/catalogo");
+    }
+}

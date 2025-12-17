@@ -1,0 +1,117 @@
+﻿@page "/admin-usuarios"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+@using FeriaAgricultor.Core.Models
+@using FeriaAgricultor.Core.Data
+@using FeriaAgricultor.Core.Services
+
+@inject IRepositorio<Usuario> RepoUsuarios
+@inject ServicioSesion Sesion
+@inject NavigationManager NavManager
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Gestión de Usuarios</h2>
+        <button class="btn btn-outline-secondary" @onclick="Volver">Volver al Catálogo</button>
+    </div>
+
+    @if (!esAdmin)
+    {
+        <div class="alert alert-danger">Acceso Denegado. Solo administradores.</div>
+    }
+    else
+    {
+        <div class="card shadow">
+            <div class="card-body">
+                <table class="table table-striped align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Correo</th>
+                            <th>Rol</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var usuario in listaUsuarios)
+                        {
+                            <tr>
+                                <td>@usuario.NombreCompleto</td>
+                                <td>@usuario.Correo</td>
+                                <td>
+                                    @if (usuario.EsProductor)
+                                    {
+                                        <span class="badge bg-warning text-dark">Productor</span>
+                                    }
+                                    else
+                                    {
+
+                                        <span class="badge bg-info">Cliente</span>
+                                    }
+                                </td>
+                                <td>
+                                    @* Asumimos que si no tiene propiedad 'Activo', todos están activos por defecto *@
+                                    <span class="text-success">Activo</span>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-warning" @onclick="() => ResetearClave(usuario)">
+                                        Reset Clave
+                                    </button>
+                                    <button class="btn btn-sm btn-danger ms-1" @onclick="() => EliminarUsuario(usuario)">
+                                        Eliminar
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<Usuario> listaUsuarios = new();
+    private bool esAdmin = false;
+
+    protected override void OnInitialized()
+    {
+        // 1. Validar Seguridad
+        if (!Sesion.EstaLogueado)
+        {
+            NavManager.NavigateTo("/");
+            return;
+        }
+
+        // Validación simple: Si el correo es admin@feria.com
+        if (Sesion.UsuarioActual.Correo == "admin@feria.com")
+        {
+            esAdmin = true;
+            listaUsuarios = RepoUsuarios.ObtenerTodos();
+        }
+    }
+
+    private void ResetearClave(Usuario u)
+    {
+        // Lógica: Poner la clave igual al correo (o una por defecto 1234)
+        u.Clave = "1234";
+        RepoUsuarios.Actualizar(u);
+        
+    }
+
+    private void EliminarUsuario(Usuario u)
+    {
+        u.NombreCompleto += " (DESACTIVADO)";
+        u.Clave = "BLOQUEADO"; // Impide el login
+        RepoUsuarios.Actualizar(u);
+
+        // Refrescar lista
+        listaUsuarios = RepoUsuarios.ObtenerTodos();
+    }
+
+    private void Volver()
+    {
+        NavManager.NavigateTo("/catalogo");
+    }
+}
